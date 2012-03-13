@@ -24,4 +24,5 @@ def index():
     return locals()
 
 if __name__=='__main__':
+    print 'serving from port 8080...'
     app.run(port=8080)

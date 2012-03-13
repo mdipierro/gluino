@@ -33,11 +33,15 @@ def dispatcher(environ, start_response):
     vars = dict((k,post[k].value) for k in post)
 
     try:
-        action = MAPS.get(environ['PATH_INFO'])
-        if action:
-            body = action(environ, vars)
+        uri = environ['PATH_INFO']
+        if uri.startswith('/static/'):
+            body = open(uri[1:],'rb').read()
         else:
-            body = 'undefined action: ' + environ['PATH_INFO']
+            action = MAPS.get(uri)
+            if action:
+                body = action(environ, vars)
+            else:
+                body = 'undefined action: ' + uri
         status = "200 OK"
     except:
         status = "500 INTERNAL ERROR"

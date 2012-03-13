@@ -1,4 +1,4 @@
-from bottle import run, route, request, get, post
+from bottle import run, route, request, get, post, static_file
 from gluino import *
 import time
 
@@ -21,5 +21,9 @@ def index():
     now  = cache.ram('time',lambda:time.ctime(),10)
     return locals()
 
+@route('/static/<filename>')
+def server_static(filename):
+    return static_file(filename, root='static')
+
 if __name__=='__main__':
-    run(host='localhost', poxrt=8080)
+    run(host='localhost', port=8080)

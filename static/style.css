@@ -1,0 +1,12 @@
+error {
+      background-color: red;
+      color: white;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

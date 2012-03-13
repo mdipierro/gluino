@@ -35,7 +35,7 @@ class wrapper(object):
                     return str(traceback.format_exc())
                 raise e
             for db in self.dbs: db.commit()
-            if a[0] and a[0].__class__.__name__=='MainHandler':
+            if a and a[0].__class__.__name__=='MainHandler':
                 # for tornado
                 a[0].write(r)
             else:
