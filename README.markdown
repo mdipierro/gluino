@@ -1,11 +1,12 @@
 ## About gluino
 
+Port of web2py libraries to Bottle, Flask, Pyramid, Tornado with examples.
+
 This is a project that started during the PyCon 2012 sprint.
 
 Author: Massimo Di Pierro
-License: Web2py license (LGPL) applies to files in minigluon folder
 
-Port of web2py libraries to Bottle, Flask, Pyramid, Tornado with examples.
+License: Web2py license (LGPL) applies to files in gluino/ folder
 
 The port includes;
 
