@@ -1,6 +1,6 @@
 ## About gluino
 
-Port of web2py libraries to Bottle, Flask, Pyramid, Tornado with examples.
+Port of web2py libraries to Bottle, Flask, Pyramid, Tornado, and Wsgiref with examples.
 
 This is a project that started during the PyCon 2012 sprint.
 
