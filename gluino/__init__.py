@@ -11,6 +11,8 @@ cache = Cache(None)
 class wrapper(object):
     debug = False
     response = None
+    redirect = None
+    http_handler = None 
     def __init__(self,view=None,dbs=[], debug = None, response = None):
         self.view = view
         self.dbs = dbs
@@ -26,8 +28,13 @@ class wrapper(object):
                 if self.response:
                     # used by pyramid
                     r = self.response(r)
-            except HTTP, e:                
-                raise NotImplementedError
+            except HTTP, http:
+                if 300<=http.status<400 and self.redirect:
+                    return self.redirect(http.status,http.headers['Location'])
+                elif self.http_handler:
+                    return self.http_handler(http.status,http.headers)
+                else:
+                    raise NotImplementedError
             except Exception, e:
                 print e
                 for db in self.dbs: db.rollback()

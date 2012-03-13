@@ -5,11 +5,14 @@ import time
 import cgi
 import traceback
 
+# configure the gluino wrapper
+wrapper.debug = True
+
+# create database and table
 db=DAL('sqlite://storage.sqlite')
 db.define_table('person',Field('name',requires=IS_NOT_EMPTY()))
 
-wrapper.debug = True
-
+# define action
 @wrapper(view='templates/index.html',dbs=[db])
 def index(environ, vars):
     vars = wrapper.extract_vars(vars)
@@ -22,10 +25,10 @@ def index(environ, vars):
     now  = cache.ram('time',lambda:time.ctime(),10)
     return locals()
 
-MAPS = {'/index':index}
-
 # A minimalist example dispatcher
 # This is very naive ... bit gives the idea...
+ 
+MAPS = {'/index':index}
 
 def dispatcher(environ, start_response):    
     post = cgi.FieldStorage(
@@ -51,6 +54,7 @@ def dispatcher(environ, start_response):
     start_response(status,headers)
     return body
 
+# start the web server
 if __name__=='__main__':
     httpd = make_server('', 8080, dispatcher)
     print "Serving on port 8080..."

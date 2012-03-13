@@ -2,14 +2,18 @@ from flask import Flask, request, session, redirect
 from gluino import *
 import time
 
+# configure the gluino wrapper                                                  wrapper.debug = True
+wrapper.redirect = lambda status, url: redirect(url)
+
+# initialize flask
 app = Flask(__name__)
 app.config.from_object(__name__)
 
+# create database and table
 db=DAL('sqlite://storage.sqlite')
 db.define_table('person',Field('name',requires=IS_NOT_EMPTY()))
 
-wrapper.debug = True
-
+# define action
 @app.route('/index',methods=['GET','POST'])
 @wrapper(view='templates/index.html',dbs=[db])
 def index():
@@ -23,6 +27,7 @@ def index():
     now  = cache.ram('time',lambda:time.ctime(),10)
     return locals()
 
+# start web server
 if __name__=='__main__':
     print 'serving from port 8080...'
     app.run(port=8080)

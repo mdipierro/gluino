@@ -1,18 +1,21 @@
 ## About gluino
 
+This is a project that started during the PyCon 2012 sprint.
+
 Author: Massimo Di Pierro
 License: Web2py license (LGPL) applies to files in minigluon folder
 
 Port of web2py libraries to Bottle, Flask, Pyramid, Tornado with examples.
+
 The port includes;
 
 - Database Abstraction Layer (dal.py) [documentation](http://web2py.com/books/default/chapter/29/6)
 - Template language (template.py) [documentation](http://web2py.com/books/default/chapter/29/5)
 - FORMs (form,py) [documentation](http://web2py.com/books/default/chapter/29/7#FORM)
 - SQLFORMs (sqlhtml.py) [documentation](http://web2py.com/books/default/chapter/29/7#SQLFORM)
-- web2py validators (validators.py) [documentation](http://web2py.com/books/default/chapter/29/7#Validators)
-- web2py widgets [documentation] (http://web2py.com/books/default/chapter/29/7#Widgets)
-- web2py cache (cache.py) [documentation](http://web2py.com/books/default/chapter/29/4#cache)
+- validators (validators.py) [documentation](http://web2py.com/books/default/chapter/29/7#Validators)
+- widgets [documentation] (http://web2py.com/books/default/chapter/29/7#Widgets)
+- cache (cache.py) [documentation](http://web2py.com/books/default/chapter/29/4#cache)
 
 ## Examples
 
@@ -23,6 +26,11 @@ The port includes;
 - wsgiref_example.py
 
 All the examples include the same common code:
+
+    db=DAL('sqlite://storage.sqlite')
+    db.define_table('person',Field('name',requires=IS_NOT_EMPTY()))
+
+    ...
 
     form = SQLFORM(db.person)
     if form.accepts(vars):
