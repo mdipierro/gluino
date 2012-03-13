@@ -32,6 +32,10 @@ All the examples include the same common code:
     now  = cache.ram('time',lambda:time.ctime(),10)
     return locals()
 
+which generates the same output on all the frameworks:
+
+![screenshot](https://github.com/mdipierro/gluino/raw/master/static/shot1.png)
+
 ## Todo
 
 needs more testing
