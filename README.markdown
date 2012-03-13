@@ -25,6 +25,8 @@ The port includes;
 - tornado_example.py
 - wsgiref_example.py
 
+pyramid_example.py is also known as [web2pyramid](http://web2pyramid.pylonsproject.org/). It was anticipated long ago but never came to be, until now!
+
 All the examples include the same common code:
 
     db=DAL('sqlite://storage.sqlite')
@@ -60,15 +62,20 @@ which generates the same output on all the frameworks:
 
 ## What is missing (compared with web2py)
 
-- sessions (you have to use the session provided by your framework)
-- multi-app support
-- the web based IDE
+- sessions (you have to use the session provided by the host framework)
+- web2py routing (you have to the routing mechanism of the host framework)
+- multi-app support (only web2py does that well)
+- the web based IDE (only web2py has it)
 - web2py internationalization (you have to use i18n)
-- the Role Based Access Control (you have to use your framework's API)
+- the Role Based Access Control (you have to use the host framework's API)
 - web2py's CRON and Scheduler
-- form.process() (you have to use form.accepts(...))
+- form.process() (you have to use form.accepts(...) but works the well)
 - everything in contrib (because we did not package it but you can copy it over)
-- web2py.js (again because we did not package but you can copy it over)
+- web2py.js (because we did not package static files here but you can copy it from web2py into static)
+
+## Important
+
+While we guarantee backward compatibility for web2py, we cannot guaranteed backward compatibility for this API since it is very new. Yet the files included here are a subset of web2py/gluon/*.py. We only added the wrapper object (in gluino/__init__.py) and the examples.
 
 ## Todo
 
