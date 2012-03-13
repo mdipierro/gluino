@@ -1,0 +1,53 @@
+Name: minigluon
+Author: Massimo Di Pierro
+License: LGPL
+
+Minigluon is a minimalist web2py incluing only the web2py DAL, the template language, the validators and the form processing library. It is designed for use with bottle, Flask, Pyramid, Django, and other web frameworks.
+
+Example in bottle:
+
+from bottle import run, routes
+from minigluon import *
+
+db = DAL('sqllite://storage.db')
+db.define_table('person',Field('name'))
+
+@route('/index')
+@wrapper(view=index.html,dbs=[db])
+def index(name='Max'):
+    if not db.person(name=name): db.person.insert(name=name)
+    return dict(name=name)
+
+run()
+
+Example in Flask
+
+from bottle import run, routes
+from minigluon import *
+
+db = DAL('sqllite://storage.db')
+db.define_table('person',Field('name'))
+
+@route('/index')
+@wrapper(view=index.html,dbs=[db])
+def index(name='Max'):
+    if not db.person(name=name): db.person.insert(name=name)
+    return dict(name=name)
+
+run()
+
+Example in Pyramid:
+
+from bottle import run, routes
+from minigluon import *
+
+db = DAL('sqllite://storage.db')
+db.define_table('person',Field('name'))
+
+@route('/index')
+@wrapper(view=index.html,dbs=[db])
+def index(name='Max'):
+    if not db.person(name=name): db.person.insert(name=name)
+    return dict(name=name)
+
+run()
