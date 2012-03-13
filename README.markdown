@@ -9,6 +9,7 @@ The port includes;
 - web2py FORMs
 - web2py SQLFORMs
 - web2py validators
+- web2py cache
 
 This is a work in progress and needs testing:
 
