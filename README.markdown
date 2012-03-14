@@ -8,6 +8,8 @@ Author: Massimo Di Pierro
 
 License: Web2py license (LGPL) applies to files in gluino/ folder
 
+On PyPI: http://pypi.python.org/pypi/Gluino
+
 The port includes;
 
 - Database Abstraction Layer (dal.py) [documentation](http://web2py.com/books/default/chapter/29/6)

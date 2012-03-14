@@ -1,3 +1,9 @@
+# Name: gluino
+# Author: Massimo Di Pierro
+# License: LGPL
+# Info: gluino is a port of web2py libraries to 
+# Bottle, Flask, Pyramid, Tornado, and other web frameworks.
+
 import traceback
 from dal import *
 from template import *
