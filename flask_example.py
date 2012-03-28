@@ -1,8 +1,9 @@
 from flask import Flask, request, session, redirect
-from gluino import *
+from gluino import wrapper, DAL, Field, SQLFORM, cache, IS_NOT_EMPTY
 import time
 
-# configure the gluino wrapper                                                  wrapper.debug = True
+# configure the gluino wrapper                                      
+wrapper.debug = True
 wrapper.redirect = lambda status, url: redirect(url)
 
 # initialize flask

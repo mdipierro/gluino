@@ -1,7 +1,7 @@
 import tornado.ioloop
 import tornado.web
 import time
-from gluino import *
+from gluino import wrapper, DAL, Field, SQLFORM, cache, IS_NOT_EMPTY
 
 # configure the gluino wrapper                                               
 wrapper.debug = True

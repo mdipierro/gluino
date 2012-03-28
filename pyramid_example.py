@@ -3,7 +3,7 @@ from pyramid.config import Configurator
 from pyramid.response import Response
 from pyramid.static import static_view
 from pyramid.httpexceptions import HTTPFound
-from gluino import *
+from gluino import wrapper, DAL, Field, SQLFORM, cache, IS_NOT_EMPTY
 import time
 
 # configure the gluino wrapper

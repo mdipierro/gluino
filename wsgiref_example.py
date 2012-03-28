@@ -1,6 +1,6 @@
 from wsgiref.util import setup_testing_defaults
 from wsgiref.simple_server import make_server
-from gluino import *
+from gluino import wrapper, DAL, Field, SQLFORM, cache, IS_NOT_EMPTY
 import time
 import cgi
 import traceback

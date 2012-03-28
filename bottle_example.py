@@ -1,5 +1,5 @@
 from bottle import run, route, request, get, post, static_file, redirect
-from gluino import *
+from gluino import wrapper, DAL, Field, SQLFORM, cache, IS_NOT_EMPTY
 import time
 
 # configure the gluino wrapper
