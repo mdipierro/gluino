@@ -65,6 +65,8 @@ which generates the same output on all the frameworks:
 
 ## What is missing (compared with web2py)
 
+Note these are not really limitations. We just assume that if you use, for example, Flask with gluino, you want to use the Flask sessions and not the web2py sessions. Same for access control. Moreover we assume that if you want to use the web2py client size styles and JavaScript, you can copy them yourself from the web2py scaffolding app.
+
 - sessions (you have to use the session provided by the host framework)
 - web2py routing (you have to the routing mechanism of the host framework)
 - multi-app support (only web2py does that well)
