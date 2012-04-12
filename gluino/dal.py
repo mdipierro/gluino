@@ -17,7 +17,7 @@ Thanks to
 
 This file contains the DAL support for many relational databases,
 including:
-- SQLite
+- SQLite & SpatiaLite
 - MySQL
 - Postgres
 - Oracle
@@ -93,7 +93,9 @@ id string text boolean integer double decimal password upload blob time date dat
 
 Supported DAL URI strings:
 'sqlite://test.db'
+'spatialite://test.db'
 'sqlite:memory'
+'spatialite:memory'
 'jdbc:sqlite://test.db'
 'mysql://root:none@localhost/test'
 'postgres://mdipierro:password@localhost/test'
@@ -429,23 +431,28 @@ class ConnectionPool(object):
     @staticmethod
     def close_all_instances(action):
         """ to close cleanly databases in a multithreaded environment """
-        if not hasattr(thread, 'instances'):
-            return
-        while thread.instances:
-            instance = thread.instances.pop()
-            if action:
-                getattr(instance, action)()
-            # ## if you want pools, recycle this connection
-            really = True
-            if instance.pool_size:
-                sql_locker.acquire()
-                pool = ConnectionPool.pools[instance.uri]
-                if len(pool) < instance.pool_size:
-                    pool.append(instance.connection)
-                    really = False
-                sql_locker.release()
-            if really:
-                getattr(instance, 'close')()
+        if hasattr(thread, 'instances'):
+            while thread.instances:
+                instance = thread.instances.pop()
+                if action:
+                    if callable(action):
+                        action(instance)
+                    else:
+                        getattr(instance, action)()
+                # ## if you want pools, recycle this connection
+                really = True
+                if instance.pool_size:
+                    sql_locker.acquire()
+                    pool = ConnectionPool.pools[instance.uri]
+                    if len(pool) < instance.pool_size:
+                        pool.append(instance.connection)
+                        really = False
+                    sql_locker.release()
+                if really:
+                    getattr(instance, 'close')()
+            
+        if callable(action):
+            action(None)
         return
 
     def find_or_make_work_folder(self):
@@ -459,6 +466,15 @@ class ConnectionPool(object):
         if False and self.folder and not os.path.exists(self.folder):
             os.mkdir(self.folder)
 
+    def after_connection(self):
+        """ this it is suppoed to be overloaded by adtapters"""
+        pass
+            
+    def reconnect(self):
+        """ allows a thread to re-connect to server or re-pool """
+        self.pool_connection(self._connection_function)
+        self.after_connection()
+
     def pool_connection(self, f, cursor=True):
         """
         this function defines: self.connection and self.cursor (iff cursor is True)
@@ -466,6 +482,7 @@ class ConnectionPool(object):
         if the connection is not active (closed by db server) it will loop
         if not self.pool_size or no active connections in pool makes a new one
         """
+        self._connection_function = f
         if not self.pool_size:
             self.connection = f()
             self.cursor = cursor and self.connection.cursor()
@@ -721,7 +738,7 @@ class BaseAdapter(ConnectionPool):
             query = '''CREATE TABLE %s(\n    %s\n)%s''' % \
                 (tablename, fields, other)
 
-        if self.uri.startswith('sqlite:///'):
+        if self.uri.startswith('sqlite:///') or self.uri.startswith('spatialite:///'):
             path_encoding = sys.getfilesystemencoding() or locale.getdefaultlocale()[1] or 'utf8'
             dbpath = self.uri[9:self.uri.rfind('/')].decode('utf8').encode(path_encoding)
         else:
@@ -729,7 +746,7 @@ class BaseAdapter(ConnectionPool):
 
         if not migrate:
             return query
-        elif self.uri.startswith('sqlite:memory'):
+        elif self.uri.startswith('sqlite:memory') or self.uri.startswith('spatialite:memory'):
             table._dbt = None
         elif isinstance(migrate, str):
             table._dbt = os.path.join(dbpath, migrate)
@@ -822,7 +839,7 @@ class BaseAdapter(ConnectionPool):
                          (tablename, key,
                           sql_fields_aux[key]['sql'].replace(', ', new_add))]
                 metadata_change = True
-            elif self.dbengine == 'sqlite':
+            elif self.dbengine in ('sqlite', 'spatialite'):
                 if key in sql_fields:
                     sql_fields_current[key] = sql_fields[key]
                 metadata_change = True
@@ -1176,24 +1193,24 @@ class BaseAdapter(ConnectionPool):
 
     def delete(self, tablename, query):
         sql = self._delete(tablename, query)
-        ### special code to handle CASCADE in SQLite
+        ### special code to handle CASCADE in SQLite & SpatiaLite
         db = self.db
         table = db[tablename]
-        if self.dbengine=='sqlite' and table._referenced_by:
+        if self.dbengine in ('sqlite', 'spatialite') and table._referenced_by:
             deleted = [x[table._id.name] for x in db(query).select(table._id)]
-        ### end special code to handle CASCADE in SQLite
+        ### end special code to handle CASCADE in SQLite & SpatiaLite
         self.execute(sql)
         try:
             counter = self.cursor.rowcount
         except:
             counter =  None
-        ### special code to handle CASCADE in SQLite
-        if self.dbengine=='sqlite' and counter:
+        ### special code to handle CASCADE in SQLite & SpatiaLite
+        if self.dbengine in ('sqlite', 'spatialite') and counter:
             for tablename,fieldname in table._referenced_by:
                 f = db[tablename][fieldname]
                 if f.type=='reference '+table._tablename and f.ondelete=='CASCADE':
                     db(db[tablename][fieldname].belongs(deleted)).delete()
-        ### end special code to handle CASCADE in SQLite
+        ### end special code to handle CASCADE in SQLite & SpatiaLite
         return counter
 
     def get_table(self, query):
@@ -1572,12 +1589,12 @@ class BaseAdapter(ConnectionPool):
 
     def parse_datetime(self, value, field_type):
         if not isinstance(value, datetime.datetime):
-            (y, m, d) = map(int,str(value)[:10].strip().split('-'))
-            time_items = map(int,str(value)[11:19].strip().split(':')[:3])
-            if len(time_items) == 3:
-                (h, mi, s) = time_items
-            else:
-                (h, mi, s) = time_items + [0]
+            date_part, time_part = (str(value).replace('T',' ')+' ').split(' ',1)
+            (y, m, d) = map(int,date_part.split('-'))
+            time_parts = time_part and time_part.split(':')[:3] or (0,0,0)
+            while len(time_parts)<3: time_parts.append(0)
+            time_items = map(int,time_parts)
+            (h, mi, s) = time_items
             value = datetime.datetime(y, m, d, h, mi, s)
         return value
 
@@ -1586,7 +1603,7 @@ class BaseAdapter(ConnectionPool):
 
     def parse_decimal(self, value, field_type):
         decimals = int(field_type[8:-1].split(',')[-1])
-        if self.dbengine == 'sqlite':
+        if self.dbengine in ('sqlite', 'spatialite'):
             value = ('%.' + str(decimals) + 'f') % value
         if not isinstance(value, decimal.Decimal):
             value = decimal.Decimal(str(value))
@@ -1779,6 +1796,9 @@ class SQLiteAdapter(BaseAdapter):
         def connect(dbpath=dbpath, driver_args=driver_args):
             return self.driver.Connection(dbpath, **driver_args)
         self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
         self.connection.create_function('web2py_extract', 2,
                                         SQLiteAdapter.web2py_extract)
         self.connection.create_function("REGEXP", 2,
@@ -1808,6 +1828,103 @@ class SQLiteAdapter(BaseAdapter):
         return sql
 
 
+class SpatiaLiteAdapter(SQLiteAdapter):
+
+    import copy
+    types = copy.copy(BaseAdapter.types)
+    types.update({'geometry': 'GEOMETRY'})
+
+    def __init__(self, db, uri, pool_size=0, folder=None, db_codec ='UTF-8',
+                 credential_decoder=lambda x:x, driver_args={},
+                 adapter_args={}, srid=4326):
+        if not self.driver:
+            raise RuntimeError, "Unable to import driver"
+        self.db = db
+        self.dbengine = "spatialite"
+        self.uri = uri
+        self.pool_size = 0
+        self.folder = folder
+        self.db_codec = db_codec
+        self.find_or_make_work_folder()
+        self.srid = srid
+        path_encoding = sys.getfilesystemencoding() or locale.getdefaultlocale()[1] or 'utf8'
+        if uri.startswith('spatialite:memory'):
+            dbpath = ':memory:'
+        else:
+            dbpath = uri.split('://')[1]
+            if dbpath[0] != '/':
+                dbpath = os.path.join(self.folder.decode(path_encoding).encode('utf8'), dbpath)
+        if not 'check_same_thread' in driver_args:
+            driver_args['check_same_thread'] = False
+        if not 'detect_types' in driver_args:
+            driver_args['detect_types'] = self.driver.PARSE_DECLTYPES
+        def connect(dbpath=dbpath, driver_args=driver_args):
+            return self.driver.Connection(dbpath, **driver_args)
+        self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
+        self.connection.enable_load_extension(True)
+        # for Windows, rename libspatialite-2.dll as libspatialite.dll
+        # Linux uses libspatialite.so
+        # Mac OS X uses libspatialite.dylib
+        self.execute(r'SELECT load_extension("libspatialite");')
+
+        self.connection.create_function('web2py_extract', 2,
+                                        SQLiteAdapter.web2py_extract)
+        self.connection.create_function("REGEXP", 2,
+                                        SQLiteAdapter.web2py_regexp)
+
+    # GIS functions
+
+    def ST_ASGEOJSON(self, first, second):
+        return 'AsGeoJSON(%s,%s,%s)' %(self.expand(first),
+            second['precision'], second['options'])
+
+    def ST_ASTEXT(self, first):
+        return 'AsText(%s)' %(self.expand(first))
+
+    def ST_CONTAINS(self, first, second):
+        return 'Contains(%s,%s)' %(self.expand(first), self.expand(second, first.type))
+
+    def ST_DISTANCE(self, first, second):
+        return 'Distance(%s,%s)' %(self.expand(first), self.expand(second, first.type))
+
+    def ST_EQUALS(self, first, second):
+        return 'Equals(%s,%s)' %(self.expand(first), self.expand(second, first.type))
+
+    def ST_INTERSECTS(self, first, second):
+        return 'Intersects(%s,%s)' %(self.expand(first), self.expand(second, first.type))
+
+    def ST_OVERLAPS(self, first, second):
+        return 'Overlaps(%s,%s)' %(self.expand(first), self.expand(second, first.type))
+
+    def ST_SIMPLIFY(self, first, second):
+        return 'Simplify(%s,%s)' %(self.expand(first), self.expand(second, 'double'))
+
+    def ST_TOUCHES(self, first, second):
+        return 'Touches(%s,%s)' %(self.expand(first), self.expand(second, first.type))
+
+    def ST_WITHIN(self, first, second):
+        return 'Within(%s,%s)' %(self.expand(first), self.expand(second, first.type))
+
+    def represent(self, obj, fieldtype):
+        if fieldtype.startswith('geo'):
+            srid = 4326 # Spatialite default srid for geometry
+            geotype, parms = fieldtype[:-1].split('(')
+            parms = parms.split(',')
+            if len(parms) >= 2:
+                schema, srid = parms[:2]
+#             if fieldtype.startswith('geometry'):
+            value = "ST_GeomFromText('%s',%s)" %(obj, srid)
+#             elif fieldtype.startswith('geography'):
+#                 value = "ST_GeogFromText('SRID=%s;%s')" %(srid, obj)
+#             else:
+#                 raise SyntaxError, 'Invalid field type %s' %fieldtype
+            return value
+        return BaseAdapter.represent(self, obj, fieldtype)
+
+
 class JDBCSQLiteAdapter(SQLiteAdapter):
 
     driver = globals().get('zxJDBC', None)
@@ -1834,6 +1951,9 @@ class JDBCSQLiteAdapter(SQLiteAdapter):
         def connect(dbpath=dbpath,driver_args=driver_args):
             return self.driver.connect(java.sql.DriverManager.getConnection('jdbc:sqlite:'+dbpath), **driver_args)
         self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
         # FIXME http://www.zentus.com/sqlitejdbc/custom_functions.html for UDFs
         self.connection.create_function('web2py_extract', 2, SQLiteAdapter.web2py_extract)
 
@@ -1933,6 +2053,9 @@ class MySQLAdapter(BaseAdapter):
         def connect(driver_args=driver_args):
             return self.driver.connect(**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
         self.execute('SET FOREIGN_KEY_CHECKS=1;')
         self.execute("SET sql_mode='NO_BACKSLASH_ESCAPES';")
 
@@ -2062,6 +2185,9 @@ class PostgreSQLAdapter(BaseAdapter):
         def connect(msg=msg,driver_args=driver_args):
             return self.driver.connect(msg,**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
         self.connection.set_client_encoding('UTF8')
         self.execute("SET standard_conforming_strings=on;")
 
@@ -2219,6 +2345,9 @@ class JDBCPostgreSQLAdapter(PostgreSQLAdapter):
         def connect(msg=msg,driver_args=driver_args):
             return self.driver.connect(*msg,**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
         self.connection.set_client_encoding('UTF8')
         self.execute('BEGIN;')
         self.execute("SET CLIENT_ENCODING TO 'UNICODE';")
@@ -2324,6 +2453,9 @@ class OracleAdapter(BaseAdapter):
         def connect(uri=uri,driver_args=driver_args):
             return self.driver.connect(uri,**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
         self.execute("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';")
         self.execute("ALTER SESSION SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS';")
     oracle_fix = re.compile("[^']*('[^']*'[^']*)*\:(?P<clob>CLOB\('([^']+|'')*'\))")
@@ -2478,6 +2610,7 @@ class MSSQLAdapter(BaseAdapter):
             return self.driver.connect(cnxn,**driver_args)
         if not fake_connect:
             self.pool_connection(connect)
+            self.after_connection()
 
     def lastrowid(self,table):
         #self.execute('SELECT @@IDENTITY;')
@@ -2675,6 +2808,7 @@ class FireBirdAdapter(BaseAdapter):
         def connect(driver_args=driver_args):
             return self.driver.connect(**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
 
     def create_sequence_and_triggers(self, query, table, **args):
         tablename = table._tablename
@@ -2743,6 +2877,7 @@ class FireBirdEmbeddedAdapter(FireBirdAdapter):
         def connect(driver_args=driver_args):
             return self.driver.connect(**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
 
 
 class InformixAdapter(BaseAdapter):
@@ -2843,6 +2978,7 @@ class InformixAdapter(BaseAdapter):
         def connect(dsn=dsn,driver_args=driver_args):
             return self.driver.connect(dsn,**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
 
     def execute(self,command):
         if command[-1:]==';':
@@ -2922,6 +3058,7 @@ class DB2Adapter(BaseAdapter):
         def connect(cnxn=cnxn,driver_args=driver_args):
             return self.driver.connect(cnxn,**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
 
     def execute(self,command):
         if command[-1:]==';':
@@ -2956,8 +3093,11 @@ class TeradataAdapter(BaseAdapter):
         'time': 'TIME',
         'datetime': 'TIMESTAMP',
         'id': 'INTEGER GENERATED ALWAYS AS IDENTITY',  # Teradata Specific
-        # Modified Constraint syntax for Teradata.
-        'reference TFK': ' CONSTRAINT FK_%(foreign_table)s_PK FOREIGN KEY (%(field_name)s) REFERENCES %(foreign_table)s (%(foreign_key)s)',
+        # Modified Constraint syntax for Teradata.  
+        # Teradata does not support ON DELETE.
+        'reference': 'INT', 
+        'reference FK': ' REFERENCES %(foreign_key)s', 
+        'reference TFK': ' FOREIGN KEY (%(field_name)s) REFERENCES %(foreign_table)s (%(foreign_key)s)', 
         'list:integer': 'CLOB',
         'list:string': 'CLOB',
         'list:reference': 'CLOB',
@@ -3140,6 +3280,7 @@ class TeradataAdapter(BaseAdapter):
         def connect(cnxn=cnxn,driver_args=driver_args):
             return self.driver.connect(cnxn,**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
 
     # Similar to MSSQL, Teradata can't specify a range (for Pageby)
     def select_limitby(self, sql_s, sql_f, sql_t, sql_w, sql_o, limitby):
@@ -3224,6 +3365,7 @@ class IngresAdapter(BaseAdapter):
         def connect(driver_args=driver_args):
             return self.driver.connect(**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
 
     def create_sequence_and_triggers(self, query, table, **args):
         # post create table auto inc code (if needed)
@@ -3351,6 +3493,7 @@ class SAPDBAdapter(BaseAdapter):
             return self.driver.Connection(user, password, database,
                                           host, **driver_args)
         self.pool_connection(connect)
+        self.after_connection()
 
     def lastrowid(self,table):
         self.execute("select %s.NEXTVAL from dual" % table._sequence_name)
@@ -3397,6 +3540,9 @@ class CubridAdapter(MySQLAdapter):
                     user=user,passwd=password,driver_args=driver_args):
             return self.driver.connect(host,port,db,user,passwd,**driver_args)
         self.pool_connection(connect)
+        self.after_connection()
+
+    def after_connection(self):
         self.execute('SET FOREIGN_KEY_CHECKS=1;')
         self.execute("SET sql_mode='NO_BACKSLASH_ESCAPES';")
 
@@ -3505,18 +3651,21 @@ class GoogleSQLAdapter(UseDatabaseStoredFile,MySQLAdapter):
         if not m:
             raise SyntaxError, "Invalid URI string in SQLDB: %s" % self._uri
         instance = credential_decoder(m.group('instance'))
-        db = credential_decoder(m.group('db'))
+        self.dbstring = db = credential_decoder(m.group('db'))
         driver_args['instance'] = instance
-        createdb = adapter_args.get('createdb',True)
+        self.createdb = createdb = adapter_args.get('createdb',True)
         if not createdb:
             driver_args['database'] = db
         def connect(driver_args=driver_args):
             return rdbms.connect(**driver_args)
         self.pool_connection(connect)
-        if createdb:
-            # self.execute('DROP DATABASE %s' % db)
-            self.execute('CREATE DATABASE IF NOT EXISTS %s' % db)
-            self.execute('USE %s' % db)
+        self.after_connection()
+
+    def after_connection(self):
+        if self.createdb:
+            # self.execute('DROP DATABASE %s' % self.dbstring)
+            self.execute('CREATE DATABASE IF NOT EXISTS %s' % self.dbstring)
+            self.execute('USE %s' % self.dbstring)
         self.execute("SET FOREIGN_KEY_CHECKS=1;")
         self.execute("SET sql_mode='NO_BACKSLASH_ESCAPES';")
 
@@ -4091,6 +4240,7 @@ class CouchDBAdapter(NoSQLAdapter):
         def connect(url=url,driver_args=driver_args):
             return couchdb.Server(url,**driver_args)
         self.pool_connection(connect,cursor=False)
+        self.after_connection()
 
     def create_table(self, table, migrate=True, fake_migrate=False, polymodel=None):
         if migrate:
@@ -4283,6 +4433,7 @@ class MongoDBAdapter(NoSQLAdapter):
                 else:
                     raise SyntaxError("This is not an official Mongodb uri (http://www.mongodb.org/display/DOCS/Connections) Error : %s" % inst)
         self.pool_connection(connect,cursor=False)
+        self.after_connection()
 
 
 
@@ -5008,8 +5159,9 @@ class IMAPAdapter(NoSQLAdapter):
 
             return connection
 
-        self.pool_connection(connect)
         self.db.define_tables = self.define_tables
+        self.pool_connection(connect)
+        # self.after_connection()
 
     def pool_connection(self, f, cursor=True):
         """
@@ -5689,7 +5841,9 @@ class IMAPAdapter(NoSQLAdapter):
 
 ADAPTERS = {
     'sqlite': SQLiteAdapter,
+    'spatialite': SpatiaLiteAdapter,
     'sqlite:memory': SQLiteAdapter,
+    'spatialite:memory': SpatiaLiteAdapter,
     'mysql': MySQLAdapter,
     'postgres': PostgreSQLAdapter,
     'postgres:psycopg2': PostgreSQLAdapter,
@@ -6737,6 +6891,7 @@ class Table(dict):
 
         :raises SyntaxError: when a supplied field is of incorrect type.
         """
+
         self._actual = False # set to True by define_table()
         self._tablename = tablename
         self._sequence_name = args.get('sequence_name',None) or \
@@ -6846,6 +7001,31 @@ class Table(dict):
     def update(self,*args,**kwargs):
         raise RuntimeError, "Syntax Not Supported"
 
+    def _enable_record_versioning(self,
+                                  archive_db=None,
+                                  archive_name = '%(tablename)s_archive',
+                                  current_record = 'current_record',
+                                  is_active = 'is_active'):
+        archive_db = archive_db or self._db
+        fieldnames = self.fields()
+        archive_name = archive_name % dict(tablename=self._tablename)
+        field_type = self if archive_db is self._db else 'integer'
+        archive_table = archive_db.define_table(
+            archive_name,
+            Field(current_record,field_type),
+            self)
+        self._before_update.append(
+            lambda qset,fs,at=archive_table,cn=current_record:
+                archive_record(qset,fs,at,cn))
+        if is_active and is_active in fieldnames:
+            self._before_delete.append(
+                lambda qset: qset.update(is_active=False))
+            newquery = lambda query, t=self: t.is_active == True
+            query = self._common_filter
+            if query:
+                newquery = query & newquery
+            self._common_filter = newquery
+                
     def _validate(self,**vars):
         errors = Row()
         for key,value in vars.items():
@@ -7031,7 +7211,7 @@ class Table(dict):
     def insert(self, **fields):
         if any(f(fields) for f in self._before_insert): return 0
         ret =  self._db._adapter.insert(self,self._listify(fields))
-        ret and [f(fields) for f in self._after_insert]
+        ret and [f(fields,ret) for f in self._after_insert]
         return ret
 
     def validate_and_insert(self,**fields):
@@ -7069,7 +7249,7 @@ class Table(dict):
         items = [self._listify(item) for item in items]
         if any(f(item) for item in items for f in self._before_insert):return 0
         ret = self._db._adapter.bulk_insert(self,items)
-        ret and [[f(item) for item in items] for f in self._after_insert]
+        ret and [[f(item,ret[k]) for k,item in enumerate(items)] for f in self._after_insert]
         return ret
 
     def _truncate(self, mode = None):
@@ -7180,6 +7360,16 @@ class Table(dict):
     def on(self, query):
         return Expression(self._db,self._db._adapter.ON,self,query)
 
+def archive_record(qset,fs,archive_table,current_record):
+    tablenames = qset.db._adapter.tables(qset.query)
+    if len(tablenames)!=1: raise RuntimeError, "cannot update join"
+    table = qset.db[tablenames[0]]
+    for row in qset.select():
+        fields = archive_table._filter_fields(row)
+        fields[current_record] = row.id
+        archive_table.insert(**fields)
+    return False
+        
 
 
 class Expression(object):
@@ -7517,6 +7707,7 @@ class Field(Expression):
         compute=None,
         custom_store=None,
         custom_retrieve=None,
+        custom_retrieve_file_properties=None,
         custom_delete=None,
         ):
         self.db = None
@@ -7562,6 +7753,7 @@ class Field(Expression):
         self.isattachment = True
         self.custom_store = custom_store
         self.custom_retrieve = custom_retrieve
+        self.custom_retrieve_file_properties = custom_retrieve_file_properties
         self.custom_delete = custom_delete
         if self.label is None:
             self.label = fieldname.replace('_',' ').title()
@@ -7624,14 +7816,11 @@ class Field(Expression):
                 raise http.HTTP(404)
         if self.authorize and not self.authorize(row):
             raise http.HTTP(403)
-        try:
-            m = regex_content.match(name)
-            if not m or not self.isattachment:
-                raise TypeError, 'Can\'t retrieve %s' % name
-            filename = base64.b16decode(m.group('name'), True)
-            filename = regex_cleanup_fn.sub('_', filename)
-        except (TypeError, AttributeError):
-            filename = name
+        m = regex_content.match(name)
+        if not m or not self.isattachment:
+            raise TypeError, 'Can\'t retrieve %s' % name
+        file_properties = self.retrieve_file_properties(name,path)
+        filename = file_properties['filename']
         if isinstance(self.uploadfield, str):  # ## if file is in DB
             return (filename, cStringIO.StringIO(row[self.uploadfield] or ''))
         elif isinstance(self.uploadfield,Field):
@@ -7639,6 +7828,25 @@ class Field(Expression):
             query = self.uploadfield == name
             data = self.uploadfield.table(query)[blob_uploadfield_name]
             return (filename, cStringIO.StringIO(data))
+        else:
+            # ## if file is on filesystem
+            return (filename, open(os.path.join(file_properties['path'], name), 'rb'))
+
+    def retrieve_file_properties(self, name, path=None):
+        if self.custom_retrieve_file_properties:
+            return self.custom_retrieve_file_properties(name, path)
+        try:
+            m = regex_content.match(name)
+            if not m or not self.isattachment:
+                raise TypeError, 'Can\'t retrieve %s file properties' % name
+            filename = base64.b16decode(m.group('name'), True)
+            filename = regex_cleanup_fn.sub('_', filename)
+        except (TypeError, AttributeError):
+            filename = name
+        if isinstance(self.uploadfield, str):  # ## if file is in DB
+            return dict(path=None,filename=filename)
+        elif isinstance(self.uploadfield,Field):
+            return dict(path=None,filename=filename)
         else:
             # ## if file is on filesystem
             if path:
@@ -7652,7 +7860,8 @@ class Field(Expression):
                 f = m.group('field')
                 u = m.group('uuidkey')
                 path = os.path.join(path,"%s.%s" % (t,f),u[:2])
-            return (filename, open(os.path.join(path, name), 'rb'))
+            return dict(path=path,filename=filename)
+
 
     def formatter(self, value):
         if value is None or not self.requires:

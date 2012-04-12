@@ -17,6 +17,7 @@ class wrapper(object):
         def g(*a,**b):
             g.__name__ = f.__name__
             try:
+                for db in self.dbs: db._adapter.reconnect()
                 r = f(*a,**b)
                 if self.view:
                     r = render(filename=self.view,context=r)
