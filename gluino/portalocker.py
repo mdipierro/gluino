@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# portalocker.py - Cross-platform (posix/nt) API for flock-style file locking.
+# portalocker.py 
+# Cross-platform (posix/nt) API for flock-style file locking.
 #                  Requires python 1.5.2 or better.
 
 """
@@ -141,6 +142,17 @@ class LockedFile(object):
     def __del__(self):
         self.close()
 
+def read_locked(filename):
+    fp = LockedFile(filename, 'r')
+    data = fp.read()
+    fp.close()
+    return data
+
+def write_locked(filename,data):
+    fp = LockedFile(filename, 'w')
+    data = fp.write(data)
+    fp.close()
+
 if __name__=='__main__':
     f = LockedFile('test.txt',mode='wb')
     f.write('test ok')
@@ -148,4 +160,7 @@ if __name__=='__main__':
     f = LockedFile('test.txt',mode='rb')
     print f.read()
     f.close()
+
+
+
 
