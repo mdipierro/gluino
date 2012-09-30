@@ -28,11 +28,11 @@ class wrapper(object):
                 raise NotImplementedError
             except Exception, e:
                 print e
-                for db in self.dbs: db.rollback()
+                for db in self.dbs: db._adapter.close('rollback')
                 if self.debug:
                     return str(traceback.format_exc())
                 raise e
-            for db in self.dbs: db.commit()
+            for db in self.dbs: db._adapter.close('rollback')
             if a and a[0].__class__.__name__=='MainHandler':
                 # for tornado
                 a[0].write(r)
