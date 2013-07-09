@@ -419,7 +419,7 @@ POSTGRESQL_NONRESERVED = set((
     'HOLD',
     'HOST',
     'HOUR',
-#    'ID',
+                             #    'ID',
     'IDENTITY',
     'IF',
     'IGNORE',
@@ -501,7 +501,7 @@ POSTGRESQL_NONRESERVED = set((
     'MOVE',
     'MULTISET',
     'MUMPS',
-#    'NAME',
+                             #    'NAME',
     'NAMES',
     'NAMESPACE',
     'NCLOB',
@@ -563,7 +563,7 @@ POSTGRESQL_NONRESERVED = set((
     'PARTITION',
     'PASCAL',
     'PASSING',
-#    'PASSWORD',
+                             #    'PASSWORD',
     'PATH',
     'PERCENT_RANK',
     'PERCENTILE_CONT',
@@ -622,7 +622,7 @@ POSTGRESQL_NONRESERVED = set((
     'RETURNED_SQLSTATE',
     'RETURNS',
     'REVOKE',
-#    'ROLE',
+                             #    'ROLE',
     'ROLLBACK',
     'ROLLUP',
     'ROUTINE',
@@ -697,7 +697,7 @@ POSTGRESQL_NONRESERVED = set((
     'SYSTEM',
     'SYSTEM_USER',
     'T',
-#    'TABLE_NAME',
+                             #    'TABLE_NAME',
     'TABLESAMPLE',
     'TABLESPACE',
     'TEMP',
@@ -785,7 +785,7 @@ POSTGRESQL_NONRESERVED = set((
     'YEAR',
     'YES',
     'ZONE',
-))
+                             ))
 
 #Thanks villas
 FIREBIRD = set((
@@ -887,7 +887,7 @@ FIREBIRD = set((
     'PAGES',
     'PAGE_SIZE',
     'PARAMETER',
-#    'PASSWORD',
+               #    'PASSWORD',
     'PLAN',
     'POST_EVENT',
     'QUIT',
@@ -903,7 +903,7 @@ FIREBIRD = set((
     'RETURN',
     'RETURNING_VALUES',
     'RETURNS',
-#    'ROLE',
+               #    'ROLE',
     'ROW_COUNT',
     'ROWS',
     'RUNTIME',
@@ -941,7 +941,7 @@ FIREBIRD = set((
     'WEEKDAY',
     'WHILE',
     'YEARDAY',
-))
+               ))
 FIREBIRD_NONRESERVED = set((
     'BACKUP',
     'BLOCK',
@@ -1686,6 +1686,9 @@ SQLITE = set((
     'WHERE',
 ))
 
+
+MONGODB_NONRESERVED = set(('SAFE',))
+
 # remove from here when you add a list.
 JDBCSQLITE = SQLITE
 DB2 = INFORMIX = INGRES = JDBCPOSTGRESQL = COMMON
@@ -1708,13 +1711,8 @@ ADAPTERS = {
     'jdbc:sqlite': JDBCSQLITE,
     'jdbc:postgres': JDBCPOSTGRESQL,
     'common': COMMON,
+    'mongodb_nonreserved': MONGODB_NONRESERVED
 }
 
-ADAPTERS['all'] = reduce(lambda a,b:a.union(b),(x for x in ADAPTERS.values()))
-
-
-
-
-
-
-
+ADAPTERS['all'] = reduce(lambda a, b: a.union(b), (
+    x for x in ADAPTERS.values()))

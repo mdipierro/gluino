@@ -12,6 +12,7 @@ from validators import *
 from sqlhtml import *
 from cache import Cache
 
+current.T = lambda message,*a,**b: str(message)
 cache = Cache(None)
 
 class wrapper(object):
