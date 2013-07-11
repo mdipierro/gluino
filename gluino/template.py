@@ -823,7 +823,7 @@ class NOESCAPE():
         return self.text
 
 # And this is a generic render function.
-# Here for integration with gluon.
+# Here for integration with gluino.
 
 
 def render(content="hello world",

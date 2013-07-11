@@ -37,7 +37,7 @@ import datetime
 import urllib
 import re
 import cStringIO
-from gluon import current, redirect
+from gluino import current, redirect
 import inspect
 
 try:
@@ -2472,7 +2472,7 @@ class SQLFORM(FORM):
                 Field('name'),Field('owner',db.person),format='%(name)s')
             db.define_table('comment',Field('body'),Field('dog',db.dog))
             if db(db.person).isempty():
-                from gluon.contrib.populate import populate
+                from gluino.contrib.populate import populate
                 populate(db.person,300)
                 populate(db.dog,300)
                 populate(db.comment,1000)

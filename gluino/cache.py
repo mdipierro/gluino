@@ -13,11 +13,11 @@ Basic caching classes and methods
 - CacheInRam - providing caching in ram
 - CacheOnDisk - provides caches on disk
 
-Memcache is also available via a different module (see gluon.contrib.memcache)
+Memcache is also available via a different module (see gluino.contrib.memcache)
 
 When web2py is running on Google App Engine,
 caching will be provided by the GAE memcache
-(see gluon.contrib.gae_memcache)
+(see gluino.contrib.gae_memcache)
 """
 import traceback
 import time
@@ -406,7 +406,7 @@ class Cache(object):
     """
     Sets up generic caching, creating an instance of both CacheInRam and
     CacheOnDisk.
-    In case of GAE will make use of gluon.contrib.gae_memcache.
+    In case of GAE will make use of gluino.contrib.gae_memcache.
 
     - self.ram is an instance of CacheInRam
     - self.disk is an instance of CacheOnDisk
@@ -460,8 +460,8 @@ class Cache(object):
         quick: Session,Vars,Lang,User-agent,Public:
             fast overrides with initial strings, e.g. 'SVLP' or 'VLP', or 'VLP'
         """
-        from gluon import current
-        from gluon.http import HTTP
+        from gluino import current
+        from gluino.http import HTTP
         def wrap(func):
             def wrapped_f():
                 if current.request.env.request_method != 'GET':
@@ -614,7 +614,7 @@ def lazy_cache(key=None, time_expire=None, cache_model='ram'):
         key = key or repr(f)
 
         def g(*c, **d):
-            from gluon import current
+            from gluino import current
             return current.cache(key, time_expire, cache_model)(f)(*c, **d)
         g.__name__ = f.__name__
         return g

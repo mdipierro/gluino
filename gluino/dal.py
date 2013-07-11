@@ -230,7 +230,7 @@ except ImportError:
         import json as simplejson
     except ImportError:
         try:
-            import gluon.contrib.simplejson as simplejson
+            import gluino.contrib.simplejson as simplejson
         except ImportError:
             simplejson = None
 
@@ -8067,7 +8067,7 @@ class SQLALL(object):
     Helper class providing a comma-separated string having all the field names
     (prefixed by table name and '.')
 
-    normally only called from within gluon.sql
+    normally only called from within gluino.sql
     """
 
     def __init__(self, table):
@@ -10134,7 +10134,7 @@ class Rows(object):
         db.define_table('x',Field('number','integer'))
         if db(db.x).isempty(): [db.x.insert(number=i) for i in range(10)]
 
-        from gluon.dal import lazy_virtualfield
+        from gluino.dal import lazy_virtualfield
 
         class MyVirtualFields(object):
             # normal virtual field (backward compatible, discouraged)

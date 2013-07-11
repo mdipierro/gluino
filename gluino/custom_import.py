@@ -7,10 +7,10 @@ import re
 import sys
 import threading
 import traceback
-from gluon import current
+from gluino import current
 
 NATIVE_IMPORTER = __builtin__.__import__
-INVALID_MODULES = set(('', 'gluon', 'applications', 'custom_import'))
+INVALID_MODULES = set(('', 'gluino', 'applications', 'custom_import'))
 
 # backward compatibility API
 

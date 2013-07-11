@@ -5,14 +5,19 @@
 # Bottle, Flask, Pyramid, Tornado, and other web frameworks.
 
 import traceback
+import threading
+
+current = threading.local()
+current.T = lambda message,*a,**b: str(message)
+
 from dal import *
 from template import *
 from html import *
+from http import redirect
 from validators import *
 from sqlhtml import *
 from cache import Cache
 
-current.T = lambda message,*a,**b: str(message)
 cache = Cache(None)
 
 class wrapper(object):

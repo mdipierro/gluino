@@ -27,8 +27,8 @@ JSONErrors = (NameError, TypeError, ValueError, AttributeError,
 try:
     import json as simplejson
 except ImportError:
-    from gluon.contrib import simplejson
-    from gluon.contrib.simplejson.decoder import JSONDecodeError
+    from gluino.contrib import simplejson
+    from gluino.contrib.simplejson.decoder import JSONDecodeError
     JSONErrors += (JSONDecodeError,)
 
 __all__ = [

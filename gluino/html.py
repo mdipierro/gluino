@@ -2105,7 +2105,7 @@ class FORM(DIV):
         next      = where to redirect in case of success
         any other kwargs will be passed for form.accepts(...)
         """
-        from gluon import current, redirect
+        from gluino import current, redirect
         kwargs['request_vars'] = kwargs.get(
             'request_vars', current.request.post_vars)
         kwargs['session'] = kwargs.get('session', current.session)
@@ -2686,7 +2686,7 @@ class MARKMIN(XmlComponent):
 
     def xml(self):
         """
-        calls the gluon.contrib.markmin render function to convert the wiki syntax
+        calls the gluino.contrib.markmin render function to convert the wiki syntax
         """
         from contrib.markmin.markmin2html import render
         return render(self.text, extra=self.extra,
