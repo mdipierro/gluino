@@ -37,7 +37,8 @@ import datetime
 import urllib
 import re
 import cStringIO
-from gluino import current, redirect
+from globals import current
+from http import redirect
 import inspect
 
 try:

@@ -5,11 +5,6 @@
 # Bottle, Flask, Pyramid, Tornado, and other web frameworks.
 
 import traceback
-import threading
-
-current = threading.local()
-current.T = lambda message,*a,**b: str(message)
-
 from dal import *
 from template import *
 from html import *
@@ -17,6 +12,7 @@ from http import redirect
 from validators import *
 from sqlhtml import *
 from cache import Cache
+from globals import current
 
 cache = Cache(None)
 
@@ -25,13 +21,15 @@ class wrapper(object):
     response = None
     redirect = None
     http_handler = None 
-    def __init__(self,view=None,dbs=[], debug = None, response = None):
+    def __init__(self,view=None,dbs=[], debug = None, response = None):                
         self.view = view
         self.dbs = dbs
         if not debug is None: self.debug = debug
         if not response is None: self.response = response
     def __call__(self,f):
         def g(*a,**b):
+            from globals import current
+            current.T = lambda s,*a,**b: str(s)
             g.__name__ = f.__name__
             try:
                 r = f(*a,**b)
